@@ -67,17 +67,6 @@ def callback():
     return 'OK'
 
 
-# @handler.add(MessageEvent, message=TextMessageContent)
-# def message_text(event):
-#     with ApiClient(configuration) as api_client:
-#         line_bot_api = MessagingApi(api_client)
-#         line_bot_api.reply_message_with_http_info(
-#             ReplyMessageRequest(
-#                 reply_token=event.reply_token,
-#                 messages=[TextMessage(text=event.message.text)]
-#             )
-#         )
-
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
     with ApiClient(configuration) as api_client:
@@ -96,29 +85,18 @@ def handle_message(event):
             ReplyMessageRequest(
                 reply_token=event.reply_token,
                 messages=[TemplateMessage(
-                    alt_text='Buttons template',
-            template=buttons_template),
-            ]
+                    alt_text='請在地圖上選擇所在位置',
+                    template=buttons_template),
+                ]
             )
         )
+
 
 @handler.add(MessageEvent, message=LocationMessageContent)
 def message_location(event):
     with ApiClient(configuration) as api_client:
         line_bot_api = MessagingApi(api_client)
-        print("Location handler----------------------------------")
         print(event.message)
-        # line_bot_api.reply_message_with_http_info(
-        #     ReplyMessageRequest(
-        #         reply_token=event.reply_token,
-        #         messages=[LocationMessage(
-        #             title=event.message.title if event.message.title else "🚩",
-        #             address=event.message.address,
-        #             latitude=event.message.latitude,
-        #             longitude=event.message.longitude
-        #         )]
-        #     )
-        # )
         quick_reply = QuickReply(
             items=[
                 QuickReplyItem(
@@ -129,11 +107,13 @@ def message_location(event):
         line_bot_api.reply_message_with_http_info(
             ReplyMessageRequest(
                 reply_token=event.reply_token,
-                messages=[TextMessage(text="請問您還需要什麼服務嗎？", quickReply=quick_reply)]
+                messages=[TextMessage(
+                    text="請問您還需要什麼服務嗎？", quickReply=quick_reply)]
             )
         )
 
 
+# init
 if __name__ == "__main__":
     arg_parser = ArgumentParser(
         usage='Usage: python ' + __file__ + ' [--port <port>] [--help]'
