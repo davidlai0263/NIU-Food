@@ -59,9 +59,6 @@ quick_options = [
         action=MessageAction(label="炸物", text="炸物")
     ),
     QuickReplyItem(
-        action=MessageAction(label="麵食", text="麵食")
-    ),
-    QuickReplyItem(
         action=MessageAction(label="早餐", text="早餐")
     ),
     QuickReplyItem(
@@ -383,7 +380,7 @@ def handle_message(event):
                     template=buttons_template)),
         elif user_data[1] == '1': # 1: 未選擇類型
             print('user not select type')
-            if event.message.text in ['便當', '小吃店', '滷味', '炸物', '麵食', '早餐', '宵夜']:
+            if event.message.text in ['便當', '小吃店', '滷味', '炸物', '早餐', '宵夜']:
                 db.insert_data('my_table', (user_id, 2, user_data[2], user_data[3]))
                 shops = [data for data in shop_data if event.message.text == csv_data.get_cell_by_key(data, 'typ')]
                 a = json.loads(shops[0][11])['pros']
