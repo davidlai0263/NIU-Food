@@ -34,7 +34,7 @@ from dotenv import load_dotenv
 import json
 import pandas as pd
 
-from database import Database
+from database import Database, CSVData
 
 load_dotenv()
 
@@ -88,12 +88,19 @@ def cal_distance(lat1, lon1, lat2, lon2):
 
     distance = R * c
 
-    return distance
+    return '{:.2f} KM'.format(distance)
 
-def get_flex_message(name, star, reviews_count, distance, pros, cons, url):
+def get_flex_message(name, star, review, typ, distance, pros, cons, url, img):
     flex_message = '''
 {
   "type": "bubble",
+  "hero": {
+    "type": "image",
+    "url": "https://developers-resource.landpress.line.me/fx/img/01_1_cafe.png",
+    "size": "full",
+    "aspectRatio": "20:13",
+    "aspectMode": "cover"
+  },
   "body": {
     "type": "box",
     "layout": "vertical",
@@ -158,6 +165,28 @@ def get_flex_message(name, star, reviews_count, distance, pros, cons, url):
         "margin": "lg",
         "spacing": "sm",
         "contents": [
+          {
+            "type": "box",
+            "layout": "baseline",
+            "spacing": "sm",
+            "contents": [
+              {
+                "type": "text",
+                "text": "類型",
+                "color": "#aaaaaa",
+                "size": "sm",
+                "flex": 1
+              },
+              {
+                "type": "text",
+                "text": "Flex Tower, 7-7-4 Midori-ku, Tokyo",
+                "wrap": true,
+                "color": "#666666",
+                "size": "sm",
+                "flex": 5
+              }
+            ]
+          },
           {
             "type": "box",
             "layout": "baseline",
@@ -258,11 +287,14 @@ def get_flex_message(name, star, reviews_count, distance, pros, cons, url):
         else:
             json_data['body']['contents'][1]['contents'][i]['url'] = gray_star
     json_data['body']['contents'][1]['contents'][5]['text'] = str(star)
-    json_data['body']['contents'][1]['contents'][6]['text'] = str(reviews_count)
-    json_data['body']['contents'][2]['contents'][0]['contents'][1]['text'] = distance
-    json_data['body']['contents'][2]['contents'][1]['contents'][1]['text'] = pros
-    json_data['body']['contents'][2]['contents'][2]['contents'][1]['text'] = cons
+    json_data['body']['contents'][1]['contents'][6]['text'] = str(review)
+    
+    json_data['body']['contents'][2]['contents'][0]['contents'][1]['text'] = typ
+    json_data['body']['contents'][2]['contents'][1]['contents'][1]['text'] = distance
+    json_data['body']['contents'][2]['contents'][2]['contents'][1]['text'] = pros
+    json_data['body']['contents'][2]['contents'][3]['contents'][1]['text'] = cons
     json_data['footer']['contents'][0]['action']['uri'] = url
+    json_data['hero']['url'] = img
     return json_data
 
 def get_carousel_message(flex_message_list):
@@ -271,10 +303,11 @@ def get_carousel_message(flex_message_list):
         "type": "carousel",
         "contents": flex_message_list
     }
-    return str(json.dumps(flex_message))
+    return json.dumps(flex_message, ensure_ascii=False)
 
 # init shop data
-shop_data = pd.read_csv('result.csv')
+csv_data = CSVData('result.csv')
+shop_data = csv_data.get_data()
 
 channel_secret = os.getenv('LINE_CHANNEL_SECRET', None)
 channel_access_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
@@ -319,27 +352,22 @@ def handle_message(event):
         user_id = event.source.user_id
         print(user_id)
         db_data = db.read_data('my_table')
-        print(db_data)
         if db_data != []:
             result = [data for data in db_data if data[0] == user_id]
             if result == []:
-                db.insert_data('my_table', (user_id, 0, '', ''))
-                result = [data for data in db_data if data[0] == user_id]
-            user_data = result[0]
+              user_data = db.insert_data('my_table', (user_id, '0', '', ''))
+            else:
+              user_data = result[0]
         else:
             db.insert_data('my_table', (user_id, 0, '', ''))
-        
-        
-        
+
         print(user_data)
         msg = [] # 回覆訊息
 
         if user_data[1] == '2': # 2: 重置
             print('reset user data')
-            db.insert_data('my_table', (user_id, 0, '', ''))
-            user_data = db.read_data('my_table')[0]
-        
-
+            user_data = db.insert_data('my_table', (user_id, '0', '', ''))
+        print(user_data)
         if user_data[1] == '0': # 0: 未選擇位置
             print('user not select location')
             buttons_template = ButtonsTemplate(
@@ -357,12 +385,30 @@ def handle_message(event):
             print('user not select type')
             if event.message.text in ['便當', '小吃店', '滷味', '炸物', '麵食', '早餐', '宵夜']:
                 db.insert_data('my_table', (user_id, 2, user_data[2], user_data[3]))
-                flex_message = get_carousel_message([get_flex_message('Brown Cafe', 4, 123, '1.2km', '10:00 - 23:00', '10:00 - 23:00', 'https://line.me/'), get_flex_message('Brown Cafe', 4, 123, '1.2km', '10:00 - 23:00', '10:00 - 23:00', 'https://line.me/')])
+                shops = [data for data in shop_data if event.message.text == csv_data.get_cell_by_key(data, 'typ')]
+                a = json.loads(shops[0][11])['pros']
+                print('、'.join(a))
+                shops.sort(key=lambda x: cal_distance(float(user_data[2]), float(user_data[3]), float(csv_data.get_cell_by_key(x, 'location').split(', ')[0]), float(csv_data.get_cell_by_key(x, 'location').split(', ')[1])))
+                flex_message_list = [
+                        get_flex_message(
+                        name=csv_data.get_cell_by_key(shop, 'name'),
+                        star=csv_data.get_cell_by_key(shop, 'star'),
+                        review=csv_data.get_cell_by_key(shop, 'review'),
+                        typ=csv_data.get_cell_by_key(shop, 'typ'),
+                        distance=str(cal_distance(float(user_data[2]), float(user_data[3]), float(csv_data.get_cell_by_key(shop, 'location').split(', ')[0]), float(csv_data.get_cell_by_key(shop, 'location').split(', ')[1]))),
+                        pros='\n'.join(json.loads(csv_data.get_cell_by_key(shop, 'keyword'))['pros']),
+                        cons='\n'.join(json.loads(csv_data.get_cell_by_key(shop, 'keyword'))['cons']),
+                        url=csv_data.get_cell_by_key(shop, 'url'),
+                        img=csv_data.get_cell_by_key(shop, 'img')
+                      ) for shop in shops
+                    ]
+                
+                flex_message = get_carousel_message(flex_message_list)
                 print(flex_message)
                 msg.append(TextMessage(text='好的！我們來幫你找吃的！'))
                 msg.append(
                     FlexMessage(
-                        alt_text='Brown Cafe',
+                        alt_text='店家資訊',
                         contents=FlexContainer.from_json(flex_message)
                     )
                 )

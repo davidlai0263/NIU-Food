@@ -1,5 +1,6 @@
 import sqlite3
 import threading
+import pandas as pd
 
 class Database:
     def __init__(self, db_file):
@@ -42,10 +43,10 @@ class Database:
                 self.cursor.execute(f"INSERT INTO {table_name} VALUES ({placeholders})", data)
             
             self.conn.commit()
-            return True
+            return data
         except sqlite3.Error as e:
             print(f"Error inserting/updating data: {e}")
-            return False
+            return None
 
     def read_data(self, table_name):
         try:
@@ -65,3 +66,25 @@ class Database:
 
     def close_connection(self):
         self.conn.close()
+
+class CSVData:
+    column = {
+        'url': 1,
+        'name': 2,
+        'star': 3,
+        'review': 4,
+        'typ': 6,
+        'img': 8,
+        'location': 9,
+        'keyword': 11,
+    }
+    def __init__(self, path):
+        self.csv_data = pd.read_csv(path)
+
+    def get_data(self):
+        return self.csv_data.values.tolist()
+    
+    def get_cell_by_key(self, data, key):
+        if key in self.column:
+            return data[self.column[key]]
+        return None
