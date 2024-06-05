@@ -347,7 +347,7 @@ def handle_message(event):
         
         # 檢查是否已經存在該記錄
         user_id = event.source.user_id
-        print(user_id)
+        # print(user_id)
         db_data = db.read_data('my_table')
         if db_data != []:
             result = [data for data in db_data if data[0] == user_id]
@@ -356,9 +356,9 @@ def handle_message(event):
             else:
               user_data = result[0]
         else:
-            db.insert_data('my_table', (user_id, 0, '', ''))
+            user_data = db.insert_data('my_table', (user_id, '0', '', ''))
 
-        print(user_data)
+        # print(user_data)
         msg = [] # 回覆訊息
 
         if user_data[1] == '2': # 2: 重置
@@ -381,10 +381,10 @@ def handle_message(event):
         elif user_data[1] == '1': # 1: 未選擇類型
             print('user not select type')
             if event.message.text in ['便當', '小吃店', '滷味', '炸物', '早餐', '宵夜']:
-                db.insert_data('my_table', (user_id, 2, user_data[2], user_data[3]))
+                db.insert_data('my_table', (user_id, '2', user_data[2], user_data[3]))
                 shops = [data for data in shop_data if event.message.text == csv_data.get_cell_by_key(data, 'typ')]
                 a = json.loads(shops[0][11])['pros']
-                print('、'.join(a))
+                # print('、'.join(a))
                 shops.sort(key=lambda x: cal_distance(float(user_data[2]), float(user_data[3]), float(csv_data.get_cell_by_key(x, 'location').split(', ')[0]), float(csv_data.get_cell_by_key(x, 'location').split(', ')[1])))
                 flex_message_list = [
                         get_flex_message(
@@ -401,7 +401,7 @@ def handle_message(event):
                     ]
                 
                 flex_message = get_carousel_message(flex_message_list)
-                print(flex_message)
+                # print(flex_message)
                 msg.append(TextMessage(text='好的！我們來幫你找吃的！'))
                 msg.append(
                     FlexMessage(
@@ -428,17 +428,12 @@ def handle_message(event):
 def message_location(event):
     with ApiClient(configuration) as api_client:
         line_bot_api = MessagingApi(api_client)
-        print(event.message)
+        # print(event.message)
 
         user_id = event.source.user_id
-        db.insert_data('my_table', (user_id, 1, event.message.latitude, event.message.longitude))
-        db_data = db.read_data('my_table')
-        for i in db_data:
-            if i[0] == user_id:
-                user_data = i
-                break
+        user_data = db.insert_data('my_table', (user_id, '1', event.message.latitude, event.message.longitude))
 
-        print(user_data)
+        # print(user_data)
 
         quick_reply = QuickReply(
             items=quick_options
