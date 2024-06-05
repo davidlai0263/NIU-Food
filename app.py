@@ -287,7 +287,7 @@ def get_flex_message(name, star, review, typ, distance, pros, cons, url, img):
         else:
             json_data['body']['contents'][1]['contents'][i]['url'] = gray_star
     json_data['body']['contents'][1]['contents'][5]['text'] = str(star)
-    json_data['body']['contents'][1]['contents'][6]['text'] = str(review)
+    json_data['body']['contents'][1]['contents'][6]['text'] = f'({review})'
     
     json_data['body']['contents'][2]['contents'][0]['contents'][1]['text'] = typ
     json_data['body']['contents'][2]['contents'][1]['contents'][1]['text'] = distance
