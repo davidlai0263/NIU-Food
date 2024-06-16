@@ -66,6 +66,11 @@ quick_options = [
     ),
 ]
 
+def recommandation_algorithm(distance, star):
+  w1 = 0.7
+  w2 = 0.3
+  rs = w1 * (1 / distance) + w2 * star
+  return rs
 
 def cal_distance(lat1, lon1, lat2, lon2):
     from math import sin, cos, sqrt, atan2, radians
@@ -85,7 +90,7 @@ def cal_distance(lat1, lon1, lat2, lon2):
 
     distance = R * c
 
-    return '{:.2f} KM'.format(distance)
+    return round(distance, 2)
 
 def get_flex_message(name, star, review, typ, distance, pros, cons, url, img):
     flex_message = '''
@@ -347,7 +352,6 @@ def handle_message(event):
         
         # 檢查是否已經存在該記錄
         user_id = event.source.user_id
-        # print(user_id)
         db_data = db.read_data('my_table')
         if db_data != []:
             result = [data for data in db_data if data[0] == user_id]
@@ -358,7 +362,6 @@ def handle_message(event):
         else:
             user_data = db.insert_data('my_table', (user_id, '0', '', ''))
 
-        # print(user_data)
         msg = [] # 回覆訊息
 
         if user_data[1] == '2': # 2: 重置
@@ -385,14 +388,20 @@ def handle_message(event):
                 shops = [data for data in shop_data if event.message.text == csv_data.get_cell_by_key(data, 'typ')]
                 a = json.loads(shops[0][11])['pros']
                 # print('、'.join(a))
-                shops.sort(key=lambda x: cal_distance(float(user_data[2]), float(user_data[3]), float(csv_data.get_cell_by_key(x, 'location').split(', ')[0]), float(csv_data.get_cell_by_key(x, 'location').split(', ')[1])))
+                shops.sort(key=lambda x: 
+                    recommandation_algorithm(
+                      distance=cal_distance(float(user_data[2]), float(user_data[3]), float(csv_data.get_cell_by_key(x, 'location').split(', ')[0]), float(csv_data.get_cell_by_key(x, 'location').split(', ')[1])),
+                      star=float(csv_data.get_cell_by_key(x, 'star'))
+                    ), 
+                    reverse=True
+                )
                 flex_message_list = [
                         get_flex_message(
                         name=csv_data.get_cell_by_key(shop, 'name'),
                         star=csv_data.get_cell_by_key(shop, 'star'),
                         review=csv_data.get_cell_by_key(shop, 'review'),
                         typ=csv_data.get_cell_by_key(shop, 'typ'),
-                        distance=str(cal_distance(float(user_data[2]), float(user_data[3]), float(csv_data.get_cell_by_key(shop, 'location').split(', ')[0]), float(csv_data.get_cell_by_key(shop, 'location').split(', ')[1]))),
+                        distance=str(cal_distance(float(user_data[2]), float(user_data[3]), float(csv_data.get_cell_by_key(shop, 'location').split(', ')[0]), float(csv_data.get_cell_by_key(shop, 'location').split(', ')[1]))) + ' KM',
                         pros='\n'.join(json.loads(csv_data.get_cell_by_key(shop, 'keyword'))['pros']),
                         cons='\n'.join(json.loads(csv_data.get_cell_by_key(shop, 'keyword'))['cons']),
                         url=csv_data.get_cell_by_key(shop, 'url'),
@@ -401,7 +410,6 @@ def handle_message(event):
                     ]
                 
                 flex_message = get_carousel_message(flex_message_list)
-                # print(flex_message)
                 msg.append(TextMessage(text='好的！我們來幫你找吃的！'))
                 msg.append(
                     FlexMessage(
