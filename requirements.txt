@@ -1,0 +1,4 @@
+line-bot-sdk==3.11.0
+Flask==3.0.3
+python-dotenv==1.0.1
+pandas==2.2.2
